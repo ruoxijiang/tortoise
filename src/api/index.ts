@@ -1,92 +1,71 @@
-import useServerSentEvents from "../hooks/useServerSideEvents";
+/**
+ * Welcome to Cloudflare Workers! This is your first worker.
+ *
+ * - Run `wrangler dev src/index.ts` in your terminal to start a development server
+ * - Open a browser tab at http://localhost:8787/ to see your worker in action
+ * - Run `wrangler publish src/index.ts --name my-worker` to publish your worker
+ *
+ * Learn more at https://developers.cloudflare.com/workers/
+ */
+import {vacationGenerate} from "./generate";
+import {initEnvs} from "./lib/envs";
 
-let baseURL = '/openai';
-if (process.env.NODE_ENV === 'production') {
-    baseURL = 'https://tortoise.gtkrab.workers.dev/openai'
+export interface Env {
+	OPENAI_API_KEY: string,
+	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
+	SENDGRID: KVNamespace;
+	OPENAI_KV: KVNamespace;
+	//
+	// Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
+	// MY_DURABLE_OBJECT: DurableObjectNamespace;
+	//
+	// Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
+	// MY_BUCKET: R2Bucket;
 }
-type Summary = {
-    content: string,
-    randomness: number,
-    password: string
+const keyTTLSeconds = 300;
+async function optionRequest(request: Request) {
+	return new Response(
+		'',
+		{
+			headers: {
+				'content-type': 'application/json;charset=UTF-8',
+				'Access-Control-Allow-Origin': request.headers.get("Origin") as string,
+				'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
+				'Access-Control-Allow-Headers': '*',
+			}
+		}
+	);
 }
-type Summaries = {
-    content: string[],
-    randomness: number,
-    password: string
-}
-type Result = {
-    error?: string,
-    result?: string,
-}
-type ChatResponseStream = {
-    index: number,
-    delta: {
-        content?: string
-    },
-    finish_reason: 'stop'| null
-}
-type ChatResponses = {
-    choices: Array<ChatResponseStream>
-}
-export const useGenUT = ({onData, onOpen, onClose, onError}:{onData: (data: string) => void,
-onOpen: () => void,
-    onClose: () => void,
-    onError: (event: Error) => void})=> {
-    const onMessage = (jsonStr: string) => {
-        if(jsonStr=== '[DONE]'){
-            onData && onData('');
-        } else {
-            const d: ChatResponses = JSON.parse(jsonStr);
-            if(d.choices[0].delta.content){
-                onData && onData(d.choices[0].delta.content)
-            }
-        }
-    };
-    return useServerSentEvents({
-        baseUrl: `${baseURL}/generateUT`,
-        onData: onMessage,
-        onClose,
-        onError,
-        onOpen
-    });
-};
-export const getPartialSummary = async ({content, randomness, password}: Summary): Promise<Result> => {
-    try {
-        const response = await fetch(`${baseURL}/partialSummary`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({content, randomness, password}),
-        });
-        const data: { error?: unknown, result?: string } = await response.json();
-        if (response.status !== 200) {
-            return {error: data.error as string || `Request failed with status ${response.status}`}
-        }
-        return {...data, error: undefined}
-    } catch (e: unknown) {
-        // @ts-ignore
-        return {error: e.message}
-    }
 
-};
-
-export const groupSummaries = async ({content, randomness, password}: Summaries): Promise<Result> => {
-    try {
-        const response = await fetch(`${baseURL}/groupSummary`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({content, randomness, password}),
-        });
-        const data: { error?: unknown, result?: string } = await response.json();
-        if (response.status !== 200) {
-            return {error: data.error as string || `Request failed with status ${response.status}`}
-        }
-        return {...data, error: undefined}
-    } catch (e: unknown) {
-        // @ts-ignore
-        return {error: e.message}
-    }
+export default {
+	async fetch(
+		request: Request,
+		env: Env,
+		ctx: ExecutionContext
+	): Promise<Response> {
+		initEnvs(env);
+		if(request.method.toLocaleUpperCase() === 'OPTIONS'){
+			return await optionRequest(request)
+		} else if (request.method.toLocaleUpperCase() === 'POST' && request.url.toString().includes('/sendgrid')){
+			const contentType = request.headers.get('content-type');
+			if((contentType || "").includes('application/json')){
+				const body = await request.text();
+				if(body){
+					await env.SENDGRID.put('sendgrid_events', body, {expirationTtl: keyTTLSeconds});
+					return new Response(body, {
+						headers: {
+							"content-type": "application/json;charset=UTF-8",
+						},
+					});
+				}
+			}
+		} else if(request.url.toString().includes("/openai")) {
+			const pass = await env.OPENAI_KV.get('sendgrid_events');
+			console.log(`Pass: ${pass}`);
+			return await vacationGenerate(request, env)
+		}
+		return new Response(request.headers.get('content-type'), {
+			status: 400,
+		})
+	},
 };
