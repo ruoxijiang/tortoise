@@ -8,12 +8,16 @@ export default function App() {
   const [randomness, setRandomness] = useState(0.6);
   const [password, setPassword] = useState("");
   const [result, setResult] = useState('');
+  let baseURL = '';
+  if(process.env.NODE_ENV ==='production'){
+    baseURL = 'https://tortoise.gtkrab.workers.dev'
+  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
       setPassword('');
-      const response = await fetch("/openai", {
+      const response = await fetch(`${baseURL}/openai`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
