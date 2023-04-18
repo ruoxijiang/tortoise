@@ -1,0 +1,8 @@
+name = "tortoise"
+main = "src/api/index.ts"
+compatibility_date = "2022-11-20"
+
+kv_namespaces = [
+{binding = "SENDGRID", preview_id = "330ad05e969f4a4c81e2a298908d8d86", id = "bcc48fa87cfb4a6ab6684afbb97a6048"},
+{binding = "OPENAI_KV", preview_id = "68b241566d814224b9ee64a9aac6694d", id = "883f4b827251475dacd11e34b4f6adbc"}
+]
