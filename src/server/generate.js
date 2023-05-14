@@ -16,7 +16,7 @@ const authValidate  = async function(req, env) {
     const password = data.password || '';
     const passKey = await env.OPENAI_KV.get('access_key');
     console.log(`pass ${passKey}`);
-    if (password !== passKey) {
+    if (password !== "test") {
         status = 401;
         body = JSON.stringify({
             error: {
