@@ -1,5 +1,5 @@
 name = "tortoise"
-main = "src/api/index.ts"
+main = "src/server/index.ts"
 compatibility_date = "2022-11-20"
 
 kv_namespaces = [

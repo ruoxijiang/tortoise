@@ -7,7 +7,7 @@
  *
  * Learn more at https://developers.cloudflare.com/workers/
  */
-import {generateUT, groupGenerateSummary, partialGenerateSummary, summaryGenerate, vacationGenerate} from "./generate";
+import {groupGenerateSummary, partialGenerateSummary, summaryGenerate, vacationGenerate} from "./generate";
 import {initEnvs} from "./lib/envs";
 
 export interface Env {
@@ -65,14 +65,9 @@ export default {
 			return await partialGenerateSummary(request, env)
 		} else if(request.url.toString().includes("/openai/groupSummary")) {
 			return await groupGenerateSummary(request, env)
-		} else if(request.url.toString().includes("/openai/vacation")) {
+		} else if(request.url.toString().includes("/openai")) {
 			return await vacationGenerate(request, env)
-		} else if(request.url.toString().includes("/openai/generateUT")) {
-			console.log(`url ${request.url.toString()}`);
-			return await generateUT(request, env)
 		}
-		console.log(`no path match`);
-		console.log(`url ${request.url.toString()}`);
 		return new Response(request.headers.get('content-type'), {
 			status: 400,
 		})
