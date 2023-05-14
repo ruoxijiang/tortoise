@@ -9,7 +9,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "page_deploy": "wrangler pages publish build",
+    "page_deploy": "npm run build && wrangler pages publish build",
     "test": "react-scripts test",
     "api_start": "wrangler dev",
     "api_deploy": "wrangler publish"
