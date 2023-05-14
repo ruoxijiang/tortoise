@@ -1,37 +1,70 @@
 import React, { useState } from "react";
+import {getPartialSummary, groupSummaries} from "./api";
 import "./index.css";
+
+const contentLen = 1000;
 
 export default function App() {
   const [waiting, setWaiting] = useState(false);
-  const [destination, setDestination] = useState("");
-  const [vacationLen, setVacationLen] = useState(5);
+  const [content, setContent] = useState("");
   const [randomness, setRandomness] = useState(0.6);
   const [password, setPassword] = useState("");
   const [result, setResult] = useState('');
-  let baseURL = '';
-  if(process.env.NODE_ENV ==='production'){
-    baseURL = 'https://tortoise.gtkrab.workers.dev'
-  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    try {
-      setPassword('');
-      const response = await fetch(`${baseURL}/openai`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ destination, vacationLen, randomness, password }),
+    function splitContent(content: string) {
+      const paragraphs = content.split('\n');
+      const sections:string[] = [];
+      let tmp = "";
+      paragraphs.forEach((c, i) => {
+        if (tmp.length + c.length <= contentLen) {
+          tmp = `${tmp}${c}`
+        } else {
+          sections.push(tmp);
+          tmp = c
+        }
+        if (i === paragraphs.length - 1) {
+          sections.push(tmp)
+        }
       });
-      const data:{error?: unknown, result?: string} = await response.json();
-      setWaiting(false);
-      if (response.status !== 200) {
-        throw data.error || new Error(`Request failed with status ${response.status}`);
-      }
-
-      setResult(data.result as string);
-      setDestination("");
+      return sections
+    }
+    event.preventDefault();
+    const ret: string[] = [];
+    try {
+      const userPass = password;
+      const userRandomness = randomness;
+      setPassword('');
+      const splits = splitContent(content);
+      setResult("Analyzing, 0% complete");
+      splits.forEach( async (content) => {
+        const partial = await getPartialSummary({content, password: userPass, randomness:userRandomness});
+        if(!partial.error){
+          ret.push(partial.result as string)
+        } else {
+          ret.push("")
+        }
+        if (ret.length === splits.length) {
+          const successRets = ret.filter(i => i.length> 0);
+          if(successRets.length === 0){
+              setResult("Operation Failed!!")
+          }else {
+            const complete = await groupSummaries({
+              content: successRets,
+              password: userPass,
+              randomness: userRandomness
+            });
+            if (!complete.error) {
+              setResult(complete.result as string)
+            } else {
+              setResult(complete.error as string)
+            }
+          }
+        setWaiting(false)
+        } else {
+          setResult(`Analyzing, ${Math.floor(ret.length/splits.length * 100)} % complete`)
+        }
+      });
     } catch(error) {
       // Consider implementing your own error handling logic here
       console.error(error);
@@ -42,7 +75,7 @@ export default function App() {
     <div>
       <main className="main">
         <img src="/dog.png" className={"icon"} />
-        <h3>Vacation Plan</h3>
+        <h3>纪要总结</h3>
         <form onSubmit={(e)=> {
           if(waiting){
             return
@@ -50,21 +83,13 @@ export default function App() {
           setWaiting(true);
           onSubmit(e)
         }}>
-          <input
-            type="text"
-            name="destination"
-            placeholder="Enter a destination"
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-          />
-          <label htmlFor="days">Enter length of vacation</label>
-          <input
-              id="days"
-              type="number"
-              name="days"
-              placeholder="Enter length of vacation"
-              value={vacationLen}
-              onChange={(e) => setVacationLen(parseInt(e.target.value))}
+          <label htmlFor="content">Content</label>
+          <textarea
+              id="content"
+              name="content"
+              placeholder="会议纪要"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
           />
           <label htmlFor="randomness">Randomness from 0 - 1</label>
           <input
@@ -84,7 +109,7 @@ export default function App() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
           />
-          <input type="submit" value={waiting ? "Generating itinerary" : "Generate itinerary"} />
+          <input type="submit" value={waiting ? "生成纪要中。。。" : "归纳总结"} />
         </form>
         <div className={"result"}>
           <div dangerouslySetInnerHTML={{ __html: result }} />
