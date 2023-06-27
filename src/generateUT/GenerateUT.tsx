@@ -3,8 +3,10 @@ import _ from 'underscore'
 import {Button, Grid, Card, TextField, Container, Typography, CardContent} from '@mui/material'
 import {useGenUT} from "../api";
 import './index.css'
+import OpenAICode from "../common/OpenAICode";
 
 export default function GenerateUT() {
+
     const [code, setCode] = useState('');
     const [ut, setUT] = useState('');
     const [streaming, setStreaming] = useState(false);
@@ -27,7 +29,6 @@ export default function GenerateUT() {
         },
         onClose: () => {
             setStreaming(false);
-            setUT('');
         }
     });
     const buttonText = useMemo(() => {
@@ -39,7 +40,8 @@ export default function GenerateUT() {
     }, [streaming]);
     const onClick = useCallback(async () => {
         if (!abortSig) {
-            setUT("Generating results...");
+            setUT("");
+            streamCache.current = '';
             setStreaming(true);
             setAbortSig(openStream(JSON.stringify({code})))
         } else {
@@ -77,9 +79,7 @@ export default function GenerateUT() {
             <Typography variant="h5" component="div">
                 Results:
             </Typography>
-            <Typography variant="body2" sx={{maxWidth: "100%"}}>
-                <pre><code style={{wordWrap: "break-word"}}>{ut}</code></pre>
-            </Typography>
+            <OpenAICode text={ut.trim()}/>
         </CardContent></Card>
     </Container>
 };
