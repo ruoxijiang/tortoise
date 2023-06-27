@@ -48,7 +48,7 @@ export default function useServerSentEvents<
             },
             onclose() {
                 onClose();
-                return;
+                throw new FatalError()
             },
             onerror(err) {
                 if (err instanceof FatalError) {

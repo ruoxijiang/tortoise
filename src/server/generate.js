@@ -48,7 +48,9 @@ export const generateUT = async function (req, env) {
         try {
             const completion = await openai.createChatCompletion({
                 model: "gpt-3.5-turbo",
-                messages: [{role: 'user', content: `Generate test case for the following go code:\n ${data.code}.`}],
+                messages: [
+                    {role: 'system', content: `You are an experienced Golang programmer that will compact and effective unit test code.`},
+                    {role: 'user', content: `Generate test case code for the following Golang code:\n ${data.code}.`}],
                 temperature: 0.2,
                 stream: true
             });
