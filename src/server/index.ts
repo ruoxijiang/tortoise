@@ -68,8 +68,11 @@ export default {
 		} else if(request.url.toString().includes("/openai/vacation")) {
 			return await vacationGenerate(request, env)
 		} else if(request.url.toString().includes("/openai/generateUT")) {
+			console.log(`url ${request.url.toString()}`);
 			return await generateUT(request, env)
 		}
+		console.log(`no path match`);
+		console.log(`url ${request.url.toString()}`);
 		return new Response(request.headers.get('content-type'), {
 			status: 400,
 		})

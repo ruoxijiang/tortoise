@@ -1,3 +1,5 @@
+import useServerSentEvents from "../hooks/useServerSideEvents";
+
 let baseURL = '/openai';
 if (process.env.NODE_ENV === 'production') {
     baseURL = 'https://tortoise.gtkrab.workers.dev/openai'
@@ -16,24 +18,37 @@ type Result = {
     error?: string,
     result?: string,
 }
-export const generateUT = async (code: string): Promise<Result> => {
-    try {
-        const response = await fetch(`${baseURL}/generateUT`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({code}),
-        });
-        const data: { error?: unknown, result?: string } = await response.json();
-        if (response.status !== 200) {
-            return {error: data.error as string || `Request failed with status ${response.status}`}
+type ChatResponseStream = {
+    index: number,
+    delta: {
+        content?: string
+    },
+    finish_reason: 'stop'| null
+}
+type ChatResponses = {
+    choices: Array<ChatResponseStream>
+}
+export const useGenUT = ({onData, onOpen, onClose, onError}:{onData: (data: string) => void,
+onOpen: () => void,
+    onClose: () => void,
+    onError: (event: Error) => void})=> {
+    const onMessage = (jsonStr: string) => {
+        if(jsonStr=== '[Done]'){
+            onData && onData('');
+        } else {
+            const d: ChatResponses = JSON.parse(jsonStr);
+            if(d.choices[0].delta.content){
+                onData && onData(d.choices[0].delta.content)
+            }
         }
-        return {...data, error: undefined}
-    } catch (e: unknown) {
-        // @ts-ignore
-        return {error: e.message}
-    }
+    };
+    return useServerSentEvents({
+        baseUrl: `${baseURL}/generateUT`,
+        onData: onMessage,
+        onClose,
+        onError,
+        onOpen
+    });
 };
 export const getPartialSummary = async ({content, randomness, password}: Summary): Promise<Result> => {
     try {

@@ -29,19 +29,16 @@ const authValidate  = async function(req, env) {
 };
 
 export const generateUT = async function (req, env) {
-    const openai = new OpenAI(getEnvs().OPENAI_API_KEY);
+    const openai = OpenAI(getEnvs().OPENAI_API_KEY);
     let status = 200;
     let body = '';
     const headers = {
-        "Content-Type": "text/event-stream;charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        "X-Accel-Buffering": "no",
         'Access-Control-Allow-Origin': req.headers.get("Origin"),
         'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
         'Access-Control-Allow-Headers': '*',
     };
     let data = await req.text();
-    console.log(data);
+    console.log(`text data ${data}`);
     data = JSON.parse(data);
     if (typeof data.code !== 'string' || data.code.length === 0){
         status = 404;
@@ -51,10 +48,18 @@ export const generateUT = async function (req, env) {
         try {
             const completion = await openai.createChatCompletion({
                 model: "gpt-3.5-turbo",
-                messages: [{role: 'user', content: `Generate test case for the following go code: ${data.code}.`}],
+                messages: [{role: 'user', content: `Generate test case for the following go code:\n ${data.code}.`}],
                 temperature: 0.2,
+                stream: true
             });
-            body = JSON.stringify({result: completion.choices[0].message.content});
+            return new Response(completion.body, {
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Content-Type": "text/event-stream;charset=utf-8",
+                    "Cache-Control": "no-cache, no-transform",
+                    "X-Accel-Buffering": "no",
+                },
+            })
         } catch (error) {
             if (error.response) {
                 console.error(error.response.status, error.response.data);
@@ -75,7 +80,7 @@ export const generateUT = async function (req, env) {
 };
 
 export const summaryGenerate = async function (req, env) {
-    const openai = new OpenAI(getEnvs().OPENAI_API_KEY);
+    const openai = OpenAI(getEnvs().OPENAI_API_KEY);
     let status = 200;
     let body = '';
     const headers = {
@@ -135,7 +140,7 @@ export const summaryGenerate = async function (req, env) {
 };
 
 export const vacationGenerate = async function (req, env) {
-    const openai = new OpenAI(getEnvs().OPENAI_API_KEY);
+    const openai = OpenAI(getEnvs().OPENAI_API_KEY);
     let status = 200;
     let body = '';
     const headers = {
@@ -215,7 +220,7 @@ export const partialGenerateSummary = async function (req, env) {
     if(!data){
         return new Response(body, {headers, status})
     }
-    const openai = new OpenAI(env.OPENAI_API_KEY);
+    const openai = OpenAI(env.OPENAI_API_KEY);
     const temperature = data.randomness || 0.6;
     const content = data.content;
     try {
@@ -248,7 +253,7 @@ export const groupGenerateSummary = async function(req, env) {
     if(!data){
         return new Response(body, {headers, status})
     }
-    const openai = new OpenAI(env.OPENAI_API_KEY);
+    const openai = OpenAI(env.OPENAI_API_KEY);
     const temperature = data.randomness || 0.6;
     const summaries = data.content;
     try {
