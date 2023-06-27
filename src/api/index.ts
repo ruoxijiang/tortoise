@@ -33,7 +33,7 @@ onOpen: () => void,
     onClose: () => void,
     onError: (event: Error) => void})=> {
     const onMessage = (jsonStr: string) => {
-        if(jsonStr=== '[Done]'){
+        if(jsonStr=== '[DONE]'){
             onData && onData('');
         } else {
             const d: ChatResponses = JSON.parse(jsonStr);

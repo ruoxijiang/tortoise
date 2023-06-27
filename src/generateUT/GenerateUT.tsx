@@ -2,6 +2,7 @@ import React, {useCallback, useMemo, useRef, useState} from 'react'
 import _ from 'underscore'
 import {Button, Grid, Card, TextField, Container, Typography, CardContent} from '@mui/material'
 import {useGenUT} from "../api";
+import './index.css'
 
 export default function GenerateUT() {
     const [code, setCode] = useState('');
@@ -39,6 +40,7 @@ export default function GenerateUT() {
     const onClick = useCallback(async () => {
         if (!abortSig) {
             setUT("Generating results...");
+            setStreaming(true);
             setAbortSig(openStream(JSON.stringify({code})))
         } else {
             closeStream(abortSig);
@@ -71,12 +73,12 @@ export default function GenerateUT() {
                 </div>
             </Grid>
         </Card>
-        <Card sx={{minWidth: 275, maxWidth: '100%', overflowY: "auto"}}><CardContent>
+        <Card sx={{minWidth: 275, maxWidth: '100%', overflowY: "hidden"}}><CardContent>
             <Typography variant="h5" component="div">
                 Results:
             </Typography>
-            <Typography variant="body2" sx={{maxWidth: "100%", overflow: "auto"}}>
-                <pre><code>{ut}</code></pre>
+            <Typography variant="body2" sx={{maxWidth: "100%"}}>
+                <pre><code style={{wordWrap: "break-word"}}>{ut}</code></pre>
             </Typography>
         </CardContent></Card>
     </Container>
