@@ -1,53 +1,83 @@
-import React, {useCallback, useState} from 'react'
-import {Button, Grid, Card, TextField, Container, Typography, CardContent } from '@mui/material'
-import {generateUT} from "../api";
+import React, {useCallback, useMemo, useRef, useState} from 'react'
+import _ from 'underscore'
+import {Button, Grid, Card, TextField, Container, Typography, CardContent} from '@mui/material'
+import {useGenUT} from "../api";
+
 export default function GenerateUT() {
     const [code, setCode] = useState('');
     const [ut, setUT] = useState('');
-    const onSubmit = useCallback(async ()=> {
-        setUT("Generating results...");
-        try {
-            const data = await generateUT(code);
-            if (data.error){
-                setUT(data.error as string)
-            } else {
-                setUT(data.result as string)
-            }
-        } catch(e: any) {
-                setUT(e.message)
+    const [streaming, setStreaming] = useState(false);
+    const [abortSig, setAbortSig] = useState<AbortController | null>(null);
+    const streamCache = useRef("");
+    const updateStreamCache = useCallback(_.throttle(() => {
+        setUT(`${ut}${streamCache.current}`)
+    }, 400), [ut]);
+    const {openStream, closeStream} = useGenUT({
+        onData: (data: string) => {
+            console.log(data);
+            streamCache.current = `${streamCache.current}${data}`;
+            updateStreamCache()
+        },
+        onError: () => {
+            setStreaming(false)
+        },
+        onOpen: () => {
+            setStreaming(true)
+        },
+        onClose: () => {
+            setStreaming(false);
+            setUT('');
         }
-    }, [code]);
+    });
+    const buttonText = useMemo(() => {
+        if (streaming) {
+            return "Stop Generating"
+        } else {
+            return "Generate"
+        }
+    }, [streaming]);
+    const onClick = useCallback(async () => {
+        if (!abortSig) {
+            setUT("Generating results...");
+            setAbortSig(openStream(JSON.stringify({code})))
+        } else {
+            closeStream(abortSig);
+            setAbortSig(null)
+        }
+    }, [code, abortSig, openStream, closeStream]);
     return <Container maxWidth={'md'} sx={{height: "100%"}}>
-        <Card sx={{ minWidth: 275, padding: "2rem" }}>
+        <Card sx={{minWidth: 275, padding: "2rem"}}>
             <Typography variant="h5" component="div">
                 Generate Go UT
             </Typography>
         </Card>
-        <Card sx={{ minWidth: 275, minHeight: 275, padding: "2rem" }}>
+        <Card sx={{minWidth: 275, minHeight: 275, padding: "2rem"}}>
             <Grid
-            container
-            direction="row"
-            justifyContent="space-around">
-            <TextField
-                label="Enter code here"
-                placeholder="Code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                minRows={'3'}
-                maxRows='10'
-                multiline
-                sx={{height: "100%", flexGrow: 1, paddingRight: "0.5rem"}}
-            />
+                container
+                direction="row"
+                justifyContent="space-around">
+                <TextField
+                    label="Enter code here"
+                    placeholder="Code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    minRows={'3'}
+                    maxRows='10'
+                    multiline
+                    sx={{height: "100%", flexGrow: 1, paddingRight: "0.5rem"}}
+                />
                 <div style={{display: "flex", flexDirection: "column", justifyContent: "center"}}>
-                    <Button variant="outlined" onClick={onSubmit}>Generate</Button>
+                    <Button variant="outlined" onClick={onClick}>{buttonText}</Button>
                 </div>
-        </Grid>
+            </Grid>
         </Card>
-        <Card sx={{ minWidth: 275 }}><CardContent>
+        <Card sx={{minWidth: 275, maxWidth: '100%', overflowY: "auto"}}><CardContent>
             <Typography variant="h5" component="div">
-            Results:
-        </Typography>
-            <Typography variant="body2"><pre><code dangerouslySetInnerHTML={{__html: ut}}/></pre></Typography>
+                Results:
+            </Typography>
+            <Typography variant="body2" sx={{maxWidth: "100%", overflow: "auto"}}>
+                <pre><code>{ut}</code></pre>
+            </Typography>
         </CardContent></Card>
     </Container>
 };
