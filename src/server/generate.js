@@ -28,6 +28,52 @@ const authValidate  = async function(req, env) {
     return {status, body, data, headers}
 };
 
+export const generateUT = async function (req, env) {
+    const openai = new OpenAI(getEnvs().OPENAI_API_KEY);
+    let status = 200;
+    let body = '';
+    const headers = {
+        "Content-Type": "text/event-stream;charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+        'Access-Control-Allow-Origin': req.headers.get("Origin"),
+        'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
+        'Access-Control-Allow-Headers': '*',
+    };
+    let data = await req.text();
+    console.log(data);
+    data = JSON.parse(data);
+    if (typeof data.code !== 'string' || data.code.length === 0){
+        status = 404;
+        body = JSON.stringify({error: {message: "Code cannot be generated"}})
+    }
+    if(status === 200) {
+        try {
+            const completion = await openai.createChatCompletion({
+                model: "gpt-3.5-turbo",
+                messages: [{role: 'user', content: `Generate test case for the following go code: ${data.code}.`}],
+                temperature: 0.2,
+            });
+            body = JSON.stringify({result: completion.choices[0].message.content});
+        } catch (error) {
+            if (error.response) {
+                console.error(error.response.status, error.response.data);
+                status = error.response.status;
+                body = JSON.stringify(error.response.data);
+            } else {
+                console.error(`Error with OpenAI API request: ${error.message}`);
+                status = 500;
+                body = JSON.stringify({
+                    error: {
+                        message: 'An error occurred during your request.',
+                    }
+                });
+            }
+        }
+    }
+    return new Response(body, {headers, status});
+};
+
 export const summaryGenerate = async function (req, env) {
     const openai = new OpenAI(getEnvs().OPENAI_API_KEY);
     let status = 200;

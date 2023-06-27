@@ -1,10 +1,10 @@
 import React, {useState} from "react";
-import {getPartialSummary, groupSummaries} from "./api";
-import "./index.css";
+import {getPartialSummary, groupSummaries} from "../api";
+import "../index.css";
 
 const contentLen = 1000;
 
-export default function App() {
+export default function Summary() {
     const [waiting, setWaiting] = useState(false);
     const [content, setContent] = useState("");
     const [randomness, setRandomness] = useState(0.6);
@@ -13,7 +13,7 @@ export default function App() {
 
     async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
         function splitContent(content: string) {
-            const paragraphs = content.split(/\n|\r/);
+            const paragraphs = content.split(/[\n\r]/);
             const sections: string[] = [];
             let tmp = "";
             paragraphs.forEach((c, i) => {
