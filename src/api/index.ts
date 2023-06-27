@@ -16,6 +16,25 @@ type Result = {
     error?: string,
     result?: string,
 }
+export const generateUT = async (code: string): Promise<Result> => {
+    try {
+        const response = await fetch(`${baseURL}/generateUT`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({code}),
+        });
+        const data: { error?: unknown, result?: string } = await response.json();
+        if (response.status !== 200) {
+            return {error: data.error as string || `Request failed with status ${response.status}`}
+        }
+        return {...data, error: undefined}
+    } catch (e: unknown) {
+        // @ts-ignore
+        return {error: e.message}
+    }
+};
 export const getPartialSummary = async ({content, randomness, password}: Summary): Promise<Result> => {
     try {
         const response = await fetch(`${baseURL}/partialSummary`, {
