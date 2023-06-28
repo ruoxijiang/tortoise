@@ -1,5 +1,5 @@
 import React, {useCallback, useMemo, useRef, useState} from 'react'
-import _ from 'underscore'
+import {throttle} from 'underscore'
 import {Button, Grid, Card, TextField, Container, Typography, CardContent} from '@mui/material'
 import {useGenUT} from "../api";
 import './index.css'
@@ -12,9 +12,9 @@ export default function GenerateUT() {
     const [streaming, setStreaming] = useState(false);
     const [abortSig, setAbortSig] = useState<AbortController | null>(null);
     const streamCache = useRef("");
-    const updateStreamCache = useCallback(_.throttle(() => {
-        setUT(`${ut}${streamCache.current}`)
-    }, 400), [ut]);
+    const updateStreamCache = useCallback(throttle(() => {
+        setUT(`${streamCache.current}`)
+    }, 400), []);
     const {openStream, closeStream} = useGenUT({
         onData: (data: string) => {
             console.log(data);
@@ -22,13 +22,15 @@ export default function GenerateUT() {
             updateStreamCache()
         },
         onError: () => {
-            setStreaming(false)
+            setStreaming(false);
+            setAbortSig(null);
         },
         onOpen: () => {
             setStreaming(true)
         },
         onClose: () => {
             setStreaming(false);
+            setAbortSig(null);
         }
     });
     const buttonText = useMemo(() => {
@@ -46,7 +48,9 @@ export default function GenerateUT() {
             setAbortSig(openStream(JSON.stringify({code})))
         } else {
             closeStream(abortSig);
-            setAbortSig(null)
+            setAbortSig(null);
+            setStreaming(false);
+            setUT(streamCache.current)
         }
     }, [code, abortSig, openStream, closeStream]);
     return <Container maxWidth={'md'} sx={{height: "100%"}}>

@@ -50,7 +50,7 @@ export const generateUT = async function (req, env) {
                 model: "gpt-3.5-turbo",
                 messages: [
                     {role: 'system', content: `You are an experienced Golang programmer that will compact and effective unit test code.`},
-                    {role: 'user', content: `Generate test case code for the following Golang code:\n ${data.code}.`}],
+                    {role: 'user', content: `Generate test case code for the following Golang code:\n ${data.code}. Wrap the generated code in "\`\`\`\n"`}],
                 temperature: 0.2,
                 stream: true
             });
