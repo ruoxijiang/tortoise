@@ -7,74 +7,85 @@
  *
  * Learn more at https://developers.cloudflare.com/workers/
  */
-import {generateUT, groupGenerateSummary, partialGenerateSummary, summaryGenerate, vacationGenerate} from "./generate";
-import {initEnvs} from "./lib/envs";
+import {
+    generateChat,
+    generateUT,
+    groupGenerateSummary,
+    partialGenerateSummary,
+    summaryGenerate,
+    vacationGenerate
+} from "./generate";
+import {Env, initEnvs} from "./lib/envs";
+import {ParseRoute, RouteParam} from "./lib/routes";
+import {listModels} from "./lib/openai";
 
-export interface Env {
-	OPENAI_API_KEY: string,
-	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
-	SENDGRID: KVNamespace;
-	OPENAI_KV: KVNamespace;
-	//
-	// Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
-	// MY_DURABLE_OBJECT: DurableObjectNamespace;
-	//
-	// Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
-	// MY_BUCKET: R2Bucket;
-}
 const keyTTLSeconds = 300;
+
 async function optionRequest(request: Request) {
-	return new Response(
-		'',
-		{
-			headers: {
-				'content-type': 'application/json;charset=UTF-8',
-				'Access-Control-Allow-Origin': request.headers.get("Origin") as string,
-				'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
-				'Access-Control-Allow-Headers': '*',
-			}
-		}
-	);
+    return new Response(
+        '',
+        {
+            headers: {
+                'content-type': 'application/json;charset=UTF-8',
+                'Access-Control-Allow-Origin': request.headers.get("Origin") as string,
+                'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
+                'Access-Control-Allow-Headers': '*',
+            }
+        }
+    );
 }
+
+const Root: RouteParam[] = [
+    {
+        path: '',
+        method: "OPTIONS",
+        handler: optionRequest,
+        children: []
+    },
+    {
+        path: 'openai',
+        children: [
+            {
+                path: 'listModels',
+                method: "GET",
+                handler: listModels
+            },
+            {
+                path: 'summary',
+                handler: summaryGenerate,
+            },
+            {
+                path: 'partialSummary',
+                handler: partialGenerateSummary
+            },
+            {
+                path: 'groupSummary',
+                handler: groupGenerateSummary
+            },
+            {
+                path: 'vacation',
+                handler: vacationGenerate
+            },
+            {
+                path: 'generateUT',
+                handler: generateUT,
+            },
+            {
+                path: 'generateChat',
+                handler: generateChat
+            },
+        ]
+    }
+];
 
 export default {
-	async fetch(
-		request: Request,
-		env: Env,
-		ctx: ExecutionContext
-	): Promise<Response> {
-		initEnvs(env);
-		if(request.method.toLocaleUpperCase() === 'OPTIONS'){
-			return await optionRequest(request)
-		} else if (request.method.toLocaleUpperCase() === 'POST' && request.url.toString().includes('/sendgrid')){
-			const contentType = request.headers.get('content-type');
-			if((contentType || "").includes('application/json')){
-				const body = await request.text();
-				if(body){
-					await env.SENDGRID.put('sendgrid_events', body, {expirationTtl: keyTTLSeconds});
-					return new Response(body, {
-						headers: {
-							"content-type": "application/json;charset=UTF-8",
-						},
-					});
-				}
-			}
-		} else if(request.url.toString().includes("/openai/summary")) {
-			return await summaryGenerate(request, env)
-		} else if(request.url.toString().includes("/openai/partialSummary")) {
-			return await partialGenerateSummary(request, env)
-		} else if(request.url.toString().includes("/openai/groupSummary")) {
-			return await groupGenerateSummary(request, env)
-		} else if(request.url.toString().includes("/openai/vacation")) {
-			return await vacationGenerate(request, env)
-		} else if(request.url.toString().includes("/openai/generateUT")) {
-			console.log(`url ${request.url.toString()}`);
-			return await generateUT(request, env)
-		}
-		console.log(`no path match`);
-		console.log(`url ${request.url.toString()}`);
-		return new Response(request.headers.get('content-type'), {
-			status: 400,
-		})
-	},
+    async fetch(
+        request: Request,
+        env: Env,
+        ctx: ExecutionContext
+    ): Promise<Response> {
+        initEnvs(env);
+        const handler = ParseRoute(Root, request, env, ctx);
+        return await handler(request, env, ctx)
+    },
 };

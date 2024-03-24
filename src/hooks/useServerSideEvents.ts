@@ -4,7 +4,7 @@ class RetriableError extends Error { }
 class FatalError extends Error { }
 
 export default function useServerSentEvents<
-    QueryParams extends Record<any, any>
+    T extends Record<any, any>
     >({
           baseUrl,
           onData,
@@ -18,14 +18,14 @@ export default function useServerSentEvents<
     onClose: () => void
     onError: (event: Error) => void
 }) {
-    function openStream(bodyStr: string): AbortController {
+    function openStream<T>(body: T): AbortController {
         const ctrl = new AbortController();
         fetchEventSource(baseUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            body: bodyStr,
+            body: JSON.stringify(body),
             async onopen(response) {
                 if (response.ok && response.headers.get('content-type')?.includes(EventStreamContentType)) {
                     onOpen();

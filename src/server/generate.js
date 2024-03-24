@@ -1,5 +1,6 @@
-import OpenAI from "./lib/openai";
+import OpenAI, {callChat} from "./lib/openai";
 import {getEnvs} from "./lib/envs";
+import {CorsHeaders} from "./lib/utils";
 
 const authValidate  = async function(req, env) {
     let status = 200;
@@ -28,55 +29,38 @@ const authValidate  = async function(req, env) {
     return {status, body, data, headers}
 };
 
+export const generateChat = async function(req, env) {
+    let data = await req.text();
+    data = JSON.parse(data);
+    const messages = data.messages.slice();
+    if(data.systemText){
+        messages.unshift({role: "system", content: data.systemText});
+    }
+    const resp = await callChat({...data, messages});
+    return new Response(resp.body, {headers: resp.headers, status: resp.status});
+};
+
 export const generateUT = async function (req, env) {
-    const openai = OpenAI(getEnvs().OPENAI_API_KEY);
     let status = 200;
     let body = '';
-    const headers = {
-        'Access-Control-Allow-Origin': req.headers.get("Origin"),
-        'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
-        'Access-Control-Allow-Headers': '*',
-    };
+    let headers = CorsHeaders({origin: req.headers.get("Origin")});
     let data = await req.text();
-    console.log(`text data ${data}`);
     data = JSON.parse(data);
     if (typeof data.code !== 'string' || data.code.length === 0){
         status = 404;
         body = JSON.stringify({error: {message: "Code cannot be generated"}})
     }
-    if(status === 200) {
-        try {
-            const completion = await openai.createChatCompletion({
-                model: "gpt-3.5-turbo",
-                messages: [
-                    {role: 'system', content: `You are an experienced Golang programmer that will compact and effective unit test code.`},
-                    {role: 'user', content: `Generate test case code for the following Golang code:\n ${data.code}. Wrap the generated code in "\`\`\`\n"`}],
-                temperature: 0.2,
-                stream: true
-            });
-            return new Response(completion.body, {
-                headers: {
-                    "Access-Control-Allow-Origin": "*",
-                    "Content-Type": "text/event-stream;charset=utf-8",
-                    "Cache-Control": "no-cache, no-transform",
-                    "X-Accel-Buffering": "no",
-                },
-            })
-        } catch (error) {
-            if (error.response) {
-                console.error(error.response.status, error.response.data);
-                status = error.response.status;
-                body = JSON.stringify(error.response.data);
-            } else {
-                console.error(`Error with OpenAI API request: ${error.message}`);
-                status = 500;
-                body = JSON.stringify({
-                    error: {
-                        message: 'An error occurred during your request.',
-                    }
-                });
-            }
-        }
+    if(status === 200){
+        const resp = await callChat({
+            model: "gpt-3.5-turbo",
+            messages: [{role: "system", content: `You are an experienced Golang programmer that will compact and effective unit test code.`},
+                {role: "user", content : `Generate test case code for the following Golang code:\n ${data.code}. Wrap the generated code in "\`\`\`\n"`},
+            ],
+            temperature: 0.2,
+        });
+        body = resp.body;
+        status = resp.status;
+        headers = resp.headers
     }
     return new Response(body, {headers, status});
 };

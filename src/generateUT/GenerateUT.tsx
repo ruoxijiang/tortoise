@@ -45,7 +45,7 @@ export default function GenerateUT() {
             setUT("");
             streamCache.current = '';
             setStreaming(true);
-            setAbortSig(openStream(JSON.stringify({code})))
+            setAbortSig(openStream({code}))
         } else {
             closeStream(abortSig);
             setAbortSig(null);

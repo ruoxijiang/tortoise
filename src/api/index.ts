@@ -1,4 +1,6 @@
 import useServerSentEvents from "../hooks/useServerSideEvents";
+import {ChatRequest} from "./utils";
+import {ModelList} from "../server/lib/openai";
 
 let baseURL = '/openai';
 if (process.env.NODE_ENV === 'production') {
@@ -23,27 +25,47 @@ type ChatResponseStream = {
     delta: {
         content?: string
     },
-    finish_reason: 'stop'| null
+    finish_reason: 'stop' | null
 }
 type ChatResponses = {
     choices: Array<ChatResponseStream>
 }
-export const useGenUT = ({onData, onOpen, onClose, onError}:{onData: (data: string) => void,
-onOpen: () => void,
+export const useGenUT = ({onData, onOpen, onClose, onError}: {
+    onData: (data: string) => void,
+    onOpen: () => void,
     onClose: () => void,
-    onError: (event: Error) => void})=> {
+    onError: (event: Error) => void
+}) => {
+    return useGen({onData, onOpen, onClose, onError, apiName: "generateUT"})
+};
+export const useGenChat = ({onData, onOpen, onClose, onError}: {
+    onData: (data: string) => void,
+    onOpen: () => void,
+    onClose: () => void,
+    onError: (event: Error) => void
+}) => {
+    return useGen<ChatRequest>({onData, onOpen, onClose, onError, apiName: "generateChat"})
+};
+const useGen = <T extends Record<any, any>>({onData, onOpen, onClose, onError, apiName}:
+                    {
+                        onData: (data: string) => void,
+                        onOpen: () => void,
+                        onClose: () => void,
+                        onError: (event: Error) => void,
+                        apiName: string
+                    }) => {
     const onMessage = (jsonStr: string) => {
-        if(jsonStr=== '[DONE]'){
+        if (jsonStr === '[DONE]') {
             onData && onData('');
         } else {
             const d: ChatResponses = JSON.parse(jsonStr);
-            if(d.choices[0].delta.content){
+            if (d.choices[0].delta.content) {
                 onData && onData(d.choices[0].delta.content)
             }
         }
     };
-    return useServerSentEvents({
-        baseUrl: `${baseURL}/generateUT`,
+    return useServerSentEvents<T>({
+        baseUrl: `${baseURL}/${apiName}`,
         onData: onMessage,
         onClose,
         onError,
@@ -88,5 +110,23 @@ export const groupSummaries = async ({content, randomness, password}: Summaries)
     } catch (e: unknown) {
         // @ts-ignore
         return {error: e.message}
+    }
+};
+
+export const fetchModelList = async (): Promise<{error?: unknown, result: ModelList | undefined}> => {
+    try {
+        const response = await fetch(`${baseURL}/listModels`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+        const data: { error?: unknown, data?: ModelList } = await response.json();
+        if (response.status !== 200) {
+            return {error: data.error as string || `Request failed with status ${response.status}`, result: undefined}
+        }
+        return {result: data.data, error: undefined}
+    } catch (e: any) {
+        return {error: e.message, result: undefined}
     }
 };
