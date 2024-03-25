@@ -30,6 +30,7 @@ const authValidate  = async function(req, env) {
 };
 
 export const generateChat = async function(req, env) {
+    let headers = CorsHeaders({origin: req.headers.get("Origin")});
     let data = await req.text();
     data = JSON.parse(data);
     const messages = data.messages.slice();
@@ -37,7 +38,7 @@ export const generateChat = async function(req, env) {
         messages.unshift({role: "system", content: data.systemText});
     }
     const resp = await callChat({...data, messages});
-    return new Response(resp.body, {headers: resp.headers, status: resp.status});
+    return new Response(resp.body, {headers: {...headers, ...resp.headers}, status: resp.status});
 };
 
 export const generateUT = async function (req, env) {
@@ -60,7 +61,7 @@ export const generateUT = async function (req, env) {
         });
         body = resp.body;
         status = resp.status;
-        headers = resp.headers
+        headers = {...headers, ...resp.headers}
     }
     return new Response(body, {headers, status});
 };
