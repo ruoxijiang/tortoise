@@ -43,35 +43,35 @@ const Root: RouteParam[] = [
         children: []
     },
     {
-        path: 'openai',
+        path: '/openai',
         children: [
             {
-                path: 'listModels',
+                path: '/listModels',
                 method: "GET",
                 handler: listModels
             },
             {
-                path: 'summary',
+                path: '/summary',
                 handler: summaryGenerate,
             },
             {
-                path: 'partialSummary',
+                path: '/partialSummary',
                 handler: partialGenerateSummary
             },
             {
-                path: 'groupSummary',
+                path: '/groupSummary',
                 handler: groupGenerateSummary
             },
             {
-                path: 'vacation',
+                path: '/vacation',
                 handler: vacationGenerate
             },
             {
-                path: 'generateUT',
+                path: '/generateUT',
                 handler: generateUT,
             },
             {
-                path: 'generateChat',
+                path: '/generateChat',
                 handler: generateChat
             },
         ]
