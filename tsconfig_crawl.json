@@ -1,0 +1,32 @@
+{
+	"compilerOptions": {
+		"lib": [
+			"es2021",
+			"dom",
+			"dom.iterable",
+			"esnext"
+		],
+		"moduleResolution": "node",
+		"types": [
+			"node",
+			"jest"
+		],
+		"resolveJsonModule": true,
+		"allowJs": false,
+		"checkJs": false,
+		"isolatedModules": true,
+		"allowSyntheticDefaultImports": true,
+		"forceConsistentCasingInFileNames": true,
+		"strict": true ,
+		"skipLibCheck": true ,
+		"target": "es6",
+		"module": "commonjs",
+		"esModuleInterop": true,
+		"outDir": "craw_dist",
+		"sourceMap": true,
+		"importHelpers": true
+	},
+	"include": ["src/webCrawl/*"]
+}
+
+
